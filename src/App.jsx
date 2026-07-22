@@ -17,34 +17,20 @@ export default function App() {
     name: '', phone: '', time: '19:30', pax: 2, smoking: false, notes: ''
   });
 
-  // Dummy Reservations Data
-  const getInitialData = () => {
-    const now = new Date();
-    const future = new Date(now.getTime() + 60 * 60000);
-    const past = new Date(now.getTime() - 30 * 60000);
-    
-    const formatTime = (d) => `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-
-    return [
-      { id: 1, name: 'Ahmet Yılmaz', phone: '+90 555 111 2233', time: formatTime(future), pax: 4, smoking: false, notes: 'Pencere kenarı', status: 'pending' },
-      { id: 2, name: 'Selin Demir', phone: '+90 555 222 3344', time: formatTime(past), pax: 2, smoking: true, notes: 'Ulaşılamıyor', status: 'pending' },
-      { id: 3, name: 'Mehmet Can', phone: '+90 555 333 4455', time: '14:00', pax: 3, smoking: false, notes: '', status: 'arrived' },
-    ];
-  };
-
-  const [reservations, setReservations] = useState(getInitialData());
+  // Tamamen Sıfırlanmış Rezervasyon Listesi
+  const [reservations, setReservations] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Dummy Tables Data for Salon View
+  // Tamamen Sıfırlanmış ve Boşaltılmış Masa Düzeni
   const [tables] = useState([
-    { id: 1, no: '1', capacity: 2, status: 'occupied', info: 'Mehmet Can (14:00)' },
+    { id: 1, no: '1', capacity: 2, status: 'empty', info: '' },
     { id: 2, no: '2', capacity: 2, status: 'empty', info: '' },
-    { id: 3, no: '3', capacity: 4, status: 'reserved', info: 'Ahmet Y. (19:30)' },
+    { id: 3, no: '3', capacity: 4, status: 'empty', info: '' },
     { id: 4, no: '4', capacity: 4, status: 'empty', info: '' },
-    { id: 5, no: '12 (VIP)', capacity: 6, status: 'occupied', info: 'Ali Bey' },
-    { id: 6, no: '14', capacity: 4, status: 'reserved', info: 'Selin D. (18:45)' },
+    { id: 5, no: '12 (VIP)', capacity: 6, status: 'empty', info: '' },
+    { id: 6, no: '14', capacity: 4, status: 'empty', info: '' },
     { id: 7, no: 'Bahçe 1', capacity: 2, status: 'empty', info: '' },
-    { id: 8, no: 'Bahçe 2', capacity: 4, status: 'occupied', info: 'Walk-in' },
+    { id: 8, no: 'Bahçe 2', capacity: 4, status: 'empty', info: '' },
   ]);
 
   useEffect(() => {
@@ -183,7 +169,13 @@ export default function App() {
           {/* TAB CONTENT: FEED (LISTE) */}
           {activeTab === 'feed' && (
             <div className="flex flex-col gap-4">
-              {reservations.length === 0 && <div className="text-center py-10 text-[#554240]">Henüz kayıt yok.</div>}
+              {reservations.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 text-[#89726f]">
+                  <ListOrdered size={48} className="mb-4 opacity-30" />
+                  <p className="font-hanken font-semibold text-lg">Şu an bekleyen kayıt yok.</p>
+                  <p className="font-hanken text-sm opacity-70 mt-1">Yeni bir misafir eklediğinde burada görünecek.</p>
+                </div>
+              )}
 
               {reservations.map((rez) => {
                 const late = checkIsLate(rez.time, rez.status);
@@ -335,6 +327,3 @@ export default function App() {
     </div>
   );
 }
-
-
-
