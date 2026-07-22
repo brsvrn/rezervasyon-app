@@ -1,4 +1,3 @@
-```react
 import React, { useState, useEffect } from 'react';
 import { 
   Menu, User, PlusCircle, Info, Users, 
@@ -337,4 +336,5 @@ export default function App() {
   );
 }
 
-```
+
+
