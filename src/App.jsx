@@ -3,7 +3,8 @@ import {
   Menu, User, PlusCircle, Info, Users, 
   CheckCircle2, XCircle, AlertTriangle, 
   Utensils, Cigarette, CigaretteOff, 
-  ListOrdered, Layers, Clock, Calendar
+  ListOrdered, Layers, Clock, Calendar,
+  Phone, MessageCircle
 } from 'lucide-react';
 
 export default function App() {
@@ -26,7 +27,6 @@ export default function App() {
     notes: ''
   });
 
-  // Kalıcı Hafızadan (localStorage) Verileri Yükleme
   const [reservations, setReservations] = useState(() => {
     const saved = localStorage.getItem('maitre_reservations');
     return saved ? JSON.parse(saved) : [];
@@ -50,7 +50,6 @@ export default function App() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Veriler değiştikçe telefon hafızasına otomatik kaydet
   useEffect(() => {
     localStorage.setItem('maitre_reservations', JSON.stringify(reservations));
   }, [reservations]);
@@ -117,6 +116,31 @@ export default function App() {
     }));
   };
 
+  // WhatsApp'a Menü Gönderme Fonksiyonu
+  const handleSendMenu = (name, phone) => {
+    if (!phone) {
+      alert("Bu rezervasyon için telefon numarası kaydedilmemiş.");
+      return;
+    }
+    
+    // Numarayı temizle (Sadece rakamları al)
+    let cleanedPhone = phone.replace(/\D/g, '');
+    
+    // Türkiye numarası formatına (+90) uygun hale getir
+    if (cleanedPhone.startsWith('0')) {
+      cleanedPhone = '90' + cleanedPhone.substring(1);
+    } else if (cleanedPhone.length === 10) {
+      cleanedPhone = '90' + cleanedPhone;
+    }
+
+    // Gönderilecek Mesaj Şablonu (Link kısmını kendi menünüzle değiştirebilirsiniz)
+    const message = `Merhaba ${name}, rezervasyonunuz başarıyla alınmıştır. Bizi tercih ettiğiniz için teşekkür ederiz. Güncel menümüze bu bağlantıdan ulaşabilirsiniz: https://menu.verticerestaurant.com.tr/?k=392 `;
+    const encodedMessage = encodeURIComponent(message);
+    
+    // WhatsApp'ı aç
+    window.open(`https://wa.me/${cleanedPhone}?text=${encodedMessage}`, '_blank');
+  };
+
   const renderTableCard = (table) => {
     let styleClass = "";
     let icon = null;
@@ -168,7 +192,7 @@ export default function App() {
 
             <div className="flex flex-col relative group">
               <label className="font-hanken font-semibold text-[#554240] absolute -top-2.5 left-2 bg-white px-1 uppercase tracking-widest text-[10px]">Telefon</label>
-              <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} className="h-12 bg-transparent border border-[#dcc0bd] focus:border-[#D4AF37] rounded-md px-3 mt-2 text-base w-full" placeholder="+90 555 000 0000" />
+              <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} className="h-12 bg-transparent border border-[#dcc0bd] focus:border-[#D4AF37] rounded-md px-3 mt-2 text-base w-full" placeholder="0555 000 00 00" />
             </div>
 
             <div className="flex flex-col relative group">
@@ -252,24 +276,41 @@ export default function App() {
                 
                 if (rez.status === 'pending' && !late) {
                   return (
-                    <article key={rez.id} className="bg-white border border-[#D4AF37]/30 rounded-xl border-l-4 border-l-[#D4AF37] p-5 flex flex-col gap-3 relative shadow-sm">
+                    <article key={rez.id} className="bg-white border border-[#D4AF37]/30 rounded-xl border-l-4 border-l-[#D4AF37] p-5 flex flex-col gap-4 relative shadow-sm">
                       <div className="flex justify-between items-start">
                         <div className="flex flex-col">
                           <div className="flex items-center gap-2">
                             <h3 className="font-playfair font-semibold text-[20px] text-[#4A0404]">{rez.name}</h3>
                             <span className="bg-[#4A0404] text-[#D4AF37] px-2 py-0.5 rounded text-xs font-bold">Masa {rez.tableNo}</span>
                           </div>
-                          <span className="font-hanken text-[12px] text-[#89726f] flex items-center gap-1 mt-0.5"><Calendar size={12}/> {rez.date}</span>
-                          {rez.notes && <span className="font-hanken text-[14px] text-[#554240] flex items-center gap-1.5 mt-1"><Info size={16} className="text-[#D4AF37]" /> {rez.notes}</span>}
+                          
+                          <div className="flex flex-col gap-1 mt-1.5">
+                            {rez.phone && (
+                              <span className="font-hanken font-semibold text-[13px] text-[#554240] flex items-center gap-1.5">
+                                <Phone size={14} className="text-[#D4AF37]" /> {rez.phone}
+                              </span>
+                            )}
+                            <span className="font-hanken text-[12px] text-[#89726f] flex items-center gap-1"><Calendar size={12}/> {rez.date}</span>
+                          </div>
+                          
+                          {rez.notes && <span className="font-hanken text-[14px] text-[#554240] flex items-center gap-1.5 mt-2"><Info size={16} className="text-[#D4AF37]" /> {rez.notes}</span>}
                         </div>
                         <div className="flex flex-col items-end gap-1.5">
                           <div className="bg-[#FDFAF0] border border-[#D4AF37]/20 px-3 py-1 rounded font-hanken font-bold text-[14px] text-[#4A0404]">{rez.time}</div>
                           <div className="flex items-center gap-1 text-[#554240] font-hanken font-semibold text-[14px]"><Users size={16} /> {rez.pax}</div>
                         </div>
                       </div>
-                      <div className="flex gap-3 mt-2">
-                        <button onClick={() => updateStatus(rez.id, 'arrived', rez.tableNo)} className="flex-1 h-10 rounded-md border border-[#4A0404] text-[#4A0404] font-semibold text-[14px] flex items-center justify-center gap-2 hover:bg-[#4A0404] hover:text-white transition-all"><CheckCircle2 size={18} /> Geldi</button>
-                        <button onClick={() => updateStatus(rez.id, 'cancelled', rez.tableNo)} className="flex-1 h-10 rounded-md border border-[#dcc0bd] text-[#554240] font-semibold text-[14px] flex items-center justify-center gap-2 hover:bg-[#f1eee4] transition-all"><XCircle size={18} /> İptal</button>
+                      
+                      <div className="flex flex-col gap-2 mt-2">
+                        {/* WhatsApp Butonu */}
+                        <button onClick={() => handleSendMenu(rez.name, rez.phone)} className="w-full h-10 rounded-md bg-[#25D366] text-white font-semibold text-[14px] flex items-center justify-center gap-2 hover:bg-[#128C7E] transition-all">
+                          <MessageCircle size={18} /> WhatsApp'tan Menü İlet
+                        </button>
+                        
+                        <div className="flex gap-2">
+                          <button onClick={() => updateStatus(rez.id, 'arrived', rez.tableNo)} className="flex-1 h-10 rounded-md border border-[#4A0404] text-[#4A0404] font-semibold text-[14px] flex items-center justify-center gap-2 hover:bg-[#4A0404] hover:text-white transition-all"><CheckCircle2 size={18} /> Geldi</button>
+                          <button onClick={() => updateStatus(rez.id, 'cancelled', rez.tableNo)} className="flex-1 h-10 rounded-md border border-[#dcc0bd] text-[#554240] font-semibold text-[14px] flex items-center justify-center gap-2 hover:bg-[#f1eee4] transition-all"><XCircle size={18} /> İptal</button>
+                        </div>
                       </div>
                     </article>
                   );
@@ -277,7 +318,7 @@ export default function App() {
 
                 if (rez.status === 'pending' && late) {
                   return (
-                    <article key={rez.id} className="bg-[#ffdad6]/20 border border-[#ba1a1a]/20 rounded-xl border-l-4 border-l-[#ba1a1a] p-5 flex flex-col gap-3 relative shadow-sm">
+                    <article key={rez.id} className="bg-[#ffdad6]/20 border border-[#ba1a1a]/20 rounded-xl border-l-4 border-l-[#ba1a1a] p-5 flex flex-col gap-4 relative shadow-sm">
                       <div className="absolute top-0 right-0 bg-[#ba1a1a] text-white font-hanken font-semibold text-[11px] px-3 py-1 rounded-bl-md flex items-center gap-1"><AlertTriangle size={14} /> GEÇ KALDI</div>
                       <div className="flex justify-between items-start mt-3">
                         <div className="flex flex-col">
@@ -285,17 +326,34 @@ export default function App() {
                             <h3 className="font-playfair font-semibold text-[20px] text-[#ba1a1a]">{rez.name}</h3>
                             <span className="bg-[#ba1a1a] text-white px-2 py-0.5 rounded text-xs font-bold">Masa {rez.tableNo}</span>
                           </div>
-                          <span className="font-hanken text-[12px] text-[#89726f] mt-0.5">{rez.date}</span>
-                          {rez.notes && <span className="font-hanken text-[14px] text-[#554240] mt-1">{rez.notes}</span>}
+                          
+                          <div className="flex flex-col gap-1 mt-1.5">
+                            {rez.phone && (
+                              <span className="font-hanken font-semibold text-[13px] text-[#554240] flex items-center gap-1.5">
+                                <Phone size={14} className="text-[#ba1a1a]" /> {rez.phone}
+                              </span>
+                            )}
+                            <span className="font-hanken text-[12px] text-[#89726f]">{rez.date}</span>
+                          </div>
+                          
+                          {rez.notes && <span className="font-hanken text-[14px] text-[#554240] mt-2">{rez.notes}</span>}
                         </div>
                         <div className="flex flex-col items-end gap-1.5">
                           <div className="bg-[#ba1a1a]/10 text-[#ba1a1a] px-3 py-1 rounded font-bold text-[14px] line-through">{rez.time}</div>
                           <div className="flex items-center gap-1 text-[#554240] font-semibold text-[14px]"><Users size={16} /> {rez.pax}</div>
                         </div>
                       </div>
-                      <div className="flex gap-3 mt-2">
-                        <button onClick={() => updateStatus(rez.id, 'cancelled', rez.tableNo)} className="flex-1 h-10 rounded-md bg-white border border-[#ba1a1a] text-[#ba1a1a] font-semibold text-[14px] flex items-center justify-center">İptal Et</button>
-                        <button onClick={() => updateStatus(rez.id, 'arrived', rez.tableNo)} className="flex-1 h-10 rounded-md bg-[#ba1a1a] text-white font-semibold text-[14px] flex items-center justify-center">Geç Geldi</button>
+                      
+                      <div className="flex flex-col gap-2 mt-2">
+                        {/* WhatsApp Butonu */}
+                        <button onClick={() => handleSendMenu(rez.name, rez.phone)} className="w-full h-10 rounded-md bg-[#25D366] text-white font-semibold text-[14px] flex items-center justify-center gap-2 hover:bg-[#128C7E] transition-all">
+                          <MessageCircle size={18} /> WhatsApp'tan Ulaş
+                        </button>
+                        
+                        <div className="flex gap-2">
+                          <button onClick={() => updateStatus(rez.id, 'cancelled', rez.tableNo)} className="flex-1 h-10 rounded-md bg-white border border-[#ba1a1a] text-[#ba1a1a] font-semibold text-[14px] flex items-center justify-center">İptal Et</button>
+                          <button onClick={() => updateStatus(rez.id, 'arrived', rez.tableNo)} className="flex-1 h-10 rounded-md bg-[#ba1a1a] text-white font-semibold text-[14px] flex items-center justify-center">Geç Geldi</button>
+                        </div>
                       </div>
                     </article>
                   );
@@ -310,6 +368,11 @@ export default function App() {
                             <h3 className="font-playfair font-semibold text-[20px] text-[#4A0404]">{rez.name}</h3>
                             <span className="bg-[#4A0404] text-[#D4AF37] px-2 py-0.5 rounded text-xs font-bold">Masa {rez.tableNo}</span>
                           </div>
+                          {rez.phone && (
+                            <span className="font-hanken font-semibold text-[12px] text-[#89726f] mt-1 flex items-center gap-1">
+                              <Phone size={12} /> {rez.phone}
+                            </span>
+                          )}
                           <div className="mt-2 inline-flex items-center gap-1.5 bg-[#4A0404]/10 text-[#4A0404] font-semibold text-[13px] px-3 py-1 rounded border border-[#4A0404]/25"><Utensils size={14} /> İçeride</div>
                         </div>
                         <div className="flex flex-col items-end gap-1.5 opacity-80">
