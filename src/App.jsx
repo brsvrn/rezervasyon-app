@@ -21,17 +21,21 @@ export default function App() {
   const [reservations, setReservations] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Tamamen Sıfırlanmış ve Boşaltılmış Masa Düzeni
-  const [tables] = useState([
-    { id: 1, no: '1', capacity: 2, status: 'empty', info: '' },
-    { id: 2, no: '2', capacity: 2, status: 'empty', info: '' },
-    { id: 3, no: '3', capacity: 4, status: 'empty', info: '' },
-    { id: 4, no: '4', capacity: 4, status: 'empty', info: '' },
-    { id: 5, no: '12 (VIP)', capacity: 6, status: 'empty', info: '' },
-    { id: 6, no: '14', capacity: 4, status: 'empty', info: '' },
-    { id: 7, no: 'Bahçe 1', capacity: 2, status: 'empty', info: '' },
-    { id: 8, no: 'Bahçe 2', capacity: 4, status: 'empty', info: '' },
-  ]);
+  // Masaları otomatik oluşturan fonksiyon (Salon V1-V20, Teras t1-t16)
+  const generateTables = () => {
+    const generated = [];
+    // Salon Masaları (20 adet)
+    for (let i = 1; i <= 20; i++) {
+      generated.push({ id: `v${i}`, no: `V${i}`, area: 'salon', capacity: 4, status: 'empty', info: '' });
+    }
+    // Teras Masaları (16 adet)
+    for (let i = 1; i <= 16; i++) {
+      generated.push({ id: `t${i}`, no: `t${i}`, area: 'teras', capacity: 4, status: 'empty', info: '' });
+    }
+    return generated;
+  };
+
+  const [tables] = useState(generateTables());
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 30000);
@@ -71,6 +75,37 @@ export default function App() {
 
   const updateStatus = (id, newStatus) => {
     setReservations(prev => prev.map(rez => rez.id === id ? { ...rez, status: newStatus } : rez));
+  };
+
+  // Masa kartını çizen yardımcı fonksiyon
+  const renderTableCard = (table) => {
+    let styleClass = "";
+    let icon = null;
+
+    if (table.status === 'empty') {
+      styleClass = "bg-white border-[#D4AF37]/50 text-[#554240]";
+    } else if (table.status === 'occupied') {
+      styleClass = "bg-[#4A0404] border-[#4A0404] text-white shadow-md";
+      icon = <Utensils size={14} className="text-[#D4AF37]" />;
+    } else if (table.status === 'reserved') {
+      styleClass = "bg-[#FDFAF0] border-[#D4AF37] border-dashed text-[#4A0404]";
+      icon = <Clock size={14} className="text-[#D4AF37]" />;
+    }
+
+    return (
+      <div key={table.id} className={`p-3 rounded-xl border-2 flex flex-col justify-between min-h-[100px] transition-all cursor-pointer hover:scale-[1.02] ${styleClass}`}>
+        <div className="flex justify-between items-start">
+          <span className="font-playfair font-bold text-[20px]">Masa {table.no}</span>
+          <div className="flex items-center gap-1 opacity-80 text-[11px] font-hanken font-bold bg-black/10 px-1.5 py-0.5 rounded">
+            <Users size={10}/> {table.capacity}
+          </div>
+        </div>
+        
+        <div className="mt-2 font-hanken font-semibold text-[13px] flex items-center gap-1.5">
+          {icon} {table.info || "Müsait"}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -263,42 +298,27 @@ export default function App() {
           {/* TAB CONTENT: SALON (KROKİ) */}
           {activeTab === 'salon' && (
             <div>
+              {/* Lejant */}
               <div className="flex flex-wrap gap-4 mb-6 bg-white p-4 rounded-xl border border-[#D4AF37]/30 shadow-sm">
                 <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-white border border-[#D4AF37]/50"></div><span className="text-[14px] font-semibold text-[#554240]">Boş</span></div>
                 <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#4A0404]"></div><span className="text-[14px] font-semibold text-[#554240]">Dolu</span></div>
                 <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#FDFAF0] border border-[#D4AF37] border-dashed"></div><span className="text-[14px] font-semibold text-[#554240]">Rezerve</span></div>
               </div>
 
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                {tables.map(table => {
-                  let styleClass = "";
-                  let icon = null;
+              {/* KAPALI SALON BÖLÜMÜ */}
+              <div className="mb-8">
+                <h3 className="font-playfair font-semibold text-[20px] text-[#4A0404] mb-4 border-b border-[#D4AF37]/20 pb-2">KAPALI SALON (20 Masa)</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {tables.filter(t => t.area === 'salon').map(table => renderTableCard(table))}
+                </div>
+              </div>
 
-                  if (table.status === 'empty') {
-                    styleClass = "bg-white border-[#D4AF37]/50 text-[#554240]";
-                  } else if (table.status === 'occupied') {
-                    styleClass = "bg-[#4A0404] border-[#4A0404] text-white shadow-md";
-                    icon = <Utensils size={16} className="text-[#D4AF37]" />;
-                  } else if (table.status === 'reserved') {
-                    styleClass = "bg-[#FDFAF0] border-[#D4AF37] border-dashed text-[#4A0404]";
-                    icon = <Clock size={16} className="text-[#D4AF37]" />;
-                  }
-
-                  return (
-                    <div key={table.id} className={`p-4 rounded-xl border-2 flex flex-col justify-between min-h-[120px] transition-all cursor-pointer hover:scale-[1.02] ${styleClass}`}>
-                      <div className="flex justify-between items-start">
-                        <span className="font-playfair font-bold text-[22px]">Masa {table.no}</span>
-                        <div className="flex items-center gap-1 opacity-80 text-[12px] font-hanken font-bold bg-black/10 px-2 py-0.5 rounded">
-                          <Users size={12}/> {table.capacity}
-                        </div>
-                      </div>
-                      
-                      <div className="mt-4 font-hanken font-semibold text-[14px] flex items-center gap-2">
-                        {icon} {table.info || "Müsait"}
-                      </div>
-                    </div>
-                  );
-                })}
+              {/* TERAS BÖLÜMÜ */}
+              <div className="mb-4">
+                <h3 className="font-playfair font-semibold text-[20px] text-[#4A0404] mb-4 border-b border-[#D4AF37]/20 pb-2">TERAS (16 Masa)</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {tables.filter(t => t.area === 'teras').map(table => renderTableCard(table))}
+                </div>
               </div>
             </div>
           )}
