@@ -1,0 +1,15 @@
+{
+  "short_name": "MaitreD",
+  "name": "Velocity Maitre D Reservations",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fcf9ef",
+  "theme_color": "#4A0404",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/color/96/restaurant-.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    }
+  ]
+}
