@@ -134,7 +134,7 @@ export default function App() {
     }
 
     // Gönderilecek Mesaj Şablonu (Link kısmını kendi menünüzle değiştirebilirsiniz)
-    const message = `Merhaba ${name}, rezervasyonunuz başarıyla alınmıştır. Bizi tercih ettiğiniz için teşekkür ederiz. Güncel menümüze bu bağlantıdan ulaşabilirsiniz: https://menu.verticerestaurant.com.tr/?k=392 `;
+    const message = `Merhaba ${name}, Vertice Restorant rezervasyonunuz başarıyla alınmıştır. Bizi tercih ettiğiniz için teşekkür ederiz. Güncel menümüze bu bağlantıdan ulaşabilirsiniz: https://menu.verticerestaurant.com.tr/?k=392 `;
     const encodedMessage = encodeURIComponent(message);
     
     // WhatsApp'ı aç
