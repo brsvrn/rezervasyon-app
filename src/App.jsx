@@ -147,7 +147,7 @@ export default function App() {
     if (cleanedPhone.startsWith('0')) cleanedPhone = '90' + cleanedPhone.substring(1);
     else if (cleanedPhone.length === 10) cleanedPhone = '90' + cleanedPhone;
     
-    const message = `Merhaba ${name}, rezervasyonunuz alınmıştır. Güncel menümüz: https://ornekmenu.com`;
+    const message = `Merhaba ${name}, Vertice Restaurant rezervasyonunuz alınmıştır. Bizi tercih ettiğiniz için teşekkür ederiz. Güncel menümüz: https://menu.verticerestaurant.com.tr/?k=392 `;
     window.open(`https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
