@@ -10,13 +10,11 @@ export default function App() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeTab, setActiveTab] = useState('feed');
 
-  // Bugünün tarihini YYYY-MM-DD formatında al
   const getTodayDateStr = () => {
     const d = new Date();
     return d.toISOString().split('T')[0];
   };
 
-  // Form States (Tarih ve Masa Ataması eklendi)
   const [formData, setFormData] = useState({
     name: '', 
     phone: '', 
@@ -28,10 +26,12 @@ export default function App() {
     notes: ''
   });
 
-  const [reservations, setReservations] = useState([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Kalıcı Hafızadan (localStorage) Verileri Yükleme
+  const [reservations, setReservations] = useState(() => {
+    const saved = localStorage.getItem('maitre_reservations');
+    return saved ? JSON.parse(saved) : [];
+  });
 
-  // Masaları oluşturan fonksiyon
   const generateTables = () => {
     const generated = [];
     for (let i = 1; i <= 20; i++) {
@@ -43,7 +43,21 @@ export default function App() {
     return generated;
   };
 
-  const [tables, setTables] = useState(generateTables());
+  const [tables, setTables] = useState(() => {
+    const saved = localStorage.getItem('maitre_tables');
+    return saved ? JSON.parse(saved) : generateTables();
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Veriler değiştikçe telefon hafızasına otomatik kaydet
+  useEffect(() => {
+    localStorage.setItem('maitre_reservations', JSON.stringify(reservations));
+  }, [reservations]);
+
+  useEffect(() => {
+    localStorage.setItem('maitre_tables', JSON.stringify(tables));
+  }, [tables]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 30000);
@@ -76,7 +90,6 @@ export default function App() {
       const newRez = { ...formData, id: Date.now(), status: 'pending' };
       setReservations(prev => [...prev, newRez].sort((a, b) => a.time.localeCompare(b.time)));
       
-      // Masayı rezerve olarak işaretle
       setTables(prev => prev.map(t => {
         if (t.no === formData.tableNo) {
           return { ...t, status: 'reserved', info: `${formData.name} (${formData.time})` };
@@ -95,7 +108,6 @@ export default function App() {
   const updateStatus = (id, newStatus, tableNo) => {
     setReservations(prev => prev.map(rez => rez.id === id ? { ...rez, status: newStatus } : rez));
     
-    // Eğer misafir geldiyse masayı dolu yap, iptal edildiyse masayı boşalt
     setTables(prev => prev.map(t => {
       if (t.no === tableNo) {
         if (newStatus === 'arrived') return { ...t, status: 'occupied' };
@@ -137,16 +149,14 @@ export default function App() {
 
   return (
     <div className="bg-[#fcf9ef] text-[#1c1c16] font-hanken antialiased min-h-screen flex flex-col pt-[64px] pb-[80px] md:pb-0">
-      {/* TopAppBar */}
-      <header className="fixed top-0 w-full z-50 border-b border-[#D4AF37]/20 bg-[#fcf9ef] shadow-sm shadow-[#4A0404]/5 flex items-center justify-between px-5 h-16">
-        <button className="text-[#4A0404] hover:opacity-80 transition-opacity p-2 -ml-2"><Menu size={24} /></button>
+      <header className="fixed top-0 w-full z-50 border-b border-[#D4AF37]/20 bg-[#fcf9ef] shadow-sm flex items-center justify-between px-5 h-16">
+        <button className="text-[#4A0404] p-2 -ml-2"><Menu size={24} /></button>
         <h1 className="font-playfair text-[24px] font-semibold text-[#4A0404] tracking-tight">Reservations</h1>
         <button className="h-8 w-8 rounded-full border border-[#D4AF37]/30 flex items-center justify-center bg-[#f1eee4] text-[#4A0404]"><User size={18} /></button>
       </header>
 
       <main className="flex-1 w-full max-w-[1440px] mx-auto flex flex-col md:flex-row-reverse gap-6 p-5 md:p-8 items-start pt-4 md:pt-8">
         
-        {/* SIDEBAR: New Entry Form */}
         <aside className={`w-full md:w-[360px] md:sticky md:top-[88px] flex-shrink-0 bg-white border border-[#D4AF37]/30 rounded-xl p-6 shadow-sm ${activeTab === 'new' ? 'block' : 'hidden md:block'}`}>
           <h2 className="font-playfair text-[28px] font-semibold text-[#4A0404] mb-6 text-center">Yeni Ekle</h2>
           
@@ -161,13 +171,11 @@ export default function App() {
               <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} className="h-12 bg-transparent border border-[#dcc0bd] focus:border-[#D4AF37] rounded-md px-3 mt-2 text-base w-full" placeholder="+90 555 000 0000" />
             </div>
 
-            {/* Tarih Seçimi */}
             <div className="flex flex-col relative group">
               <label className="font-hanken font-semibold text-[#554240] absolute -top-2.5 left-2 bg-white px-1 uppercase tracking-widest text-[10px]">Tarih</label>
               <input type="date" name="date" value={formData.date} onChange={handleInputChange} className="h-12 bg-transparent border border-[#dcc0bd] focus:border-[#D4AF37] rounded-md px-3 mt-2 text-base w-full text-[#4A0404] font-semibold" required />
             </div>
 
-            {/* Saat ve Masa Ataması */}
             <div className="flex gap-3 items-end">
               <div className="flex flex-col relative flex-1">
                 <label className="font-hanken font-semibold text-[#554240] absolute -top-2.5 left-2 bg-white px-1 uppercase tracking-widest text-[10px]">Saat</label>
@@ -199,8 +207,8 @@ export default function App() {
             <div className="flex flex-col gap-1">
               <label className="font-hanken font-semibold text-[#554240] uppercase tracking-widest text-[10px] mb-1">Tercih</label>
               <div className="flex bg-[#f6f4ea] rounded-md p-1 gap-1 border border-[#dcc0bd]">
-                <button type="button" onClick={() => setFormData(p => ({...p, smoking: false}))} className={`flex-1 h-10 rounded flex items-center justify-center gap-2 font-semibold text-[13px] ${!formData.smoking ? 'bg-white shadow-sm border border-[#D4AF37]/50 text-[#4A0404]' : 'text-[#554240] border-transparent'}`}><CigaretteOff size={16} /> İçilmeyen</button>
-                <button type="button" onClick={() => setFormData(p => ({...p, smoking: true}))} className={`flex-1 h-10 rounded flex items-center justify-center gap-2 font-semibold text-[13px] ${formData.smoking ? 'bg-white shadow-sm border border-[#D4AF37]/50 text-[#4A0404]' : 'text-[#554240] border-transparent'}`}><Cigarette size={16} /> İçilen</button>
+                <button type="button" onClick={() => setFormData(p => ({...p, smoking: false}))} className={`flex-1 h-10 rounded flex items-center justify-center gap-2 font-semibold text-[13px] ${!formData.smoking ? 'bg-white shadow-sm border border-[#D4AF37]/50 text-[#4A0404]' : 'text-[#554240]'}`}><CigaretteOff size={16} /> İçilmeyen</button>
+                <button type="button" onClick={() => setFormData(p => ({...p, smoking: true}))} className={`flex-1 h-10 rounded flex items-center justify-center gap-2 font-semibold text-[13px] ${formData.smoking ? 'bg-white shadow-sm border border-[#D4AF37]/50 text-[#4A0404]' : 'text-[#554240]'}`}><Cigarette size={16} /> İçilen</button>
               </div>
             </div>
 
@@ -215,7 +223,6 @@ export default function App() {
           </form>
         </aside>
 
-        {/* MAIN AREA */}
         <section className={`flex-1 w-full flex flex-col ${activeTab === 'new' ? 'hidden md:flex' : 'flex'}`}>
           
           <div className="flex items-center justify-between mb-6 px-1 border-b border-[#D4AF37]/20 pb-4">
@@ -231,7 +238,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* LIST VIEW */}
           {activeTab === 'feed' && (
             <div className="flex flex-col gap-4">
               {reservations.length === 0 && (
@@ -333,7 +339,6 @@ export default function App() {
             </div>
           )}
 
-          {/* SALON VIEW */}
           {activeTab === 'salon' && (
             <div>
               <div className="flex flex-wrap gap-4 mb-6 bg-white p-4 rounded-xl border border-[#D4AF37]/30 shadow-sm">
@@ -362,7 +367,6 @@ export default function App() {
         </section>
       </main>
 
-      {/* BottomNavBar */}
       <nav className="fixed bottom-0 w-full z-50 rounded-t-xl border-t border-[#D4AF37]/30 bg-[#FDFAF0] flex justify-around items-center h-20 px-2 md:hidden">
         <button onClick={() => setActiveTab('feed')} className={`flex flex-col items-center justify-center px-5 py-2 rounded-full ${activeTab === 'feed' ? 'text-[#4A0404] bg-[#fed65b]/20' : 'text-[#89726f]'}`}><ListOrdered size={24} /><span className="font-hanken font-semibold text-[10px] uppercase tracking-widest mt-1">Liste</span></button>
         <button onClick={() => setActiveTab('new')} className={`flex flex-col items-center justify-center px-5 py-2 rounded-full ${activeTab === 'new' ? 'text-[#4A0404] bg-[#fed65b]/20' : 'text-[#89726f]'}`}><PlusCircle size={24} /><span className="font-hanken font-semibold text-[10px] uppercase tracking-widest mt-1">Ekle</span></button>
