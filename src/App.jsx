@@ -185,7 +185,7 @@ export default function App() {
     // İptal formatı güncellendi
     const reportText = `📊 *${selectedDate.split('-').reverse().join('.')} - GÜN SONU RAPORU*\n\n` +
       `✅ *Ağırlanan:* ${arrived.length} Masa (${totalPax} Kişi)\n` +
-      `❌ *İptal/No-Show:* ${cancelled.length} Masa iptal etti (${cancelledPax} Kişi)\n` +
+      `❌ *İptal:* ${cancelled.length} Masa iptal etti (${cancelledPax} Kişi)\n` +
       (pending.length > 0 ? `⏳ *Gelmesi Beklenen:* ${pending.length} Masa\n\n` : `\n`) +
       `İyi çalışmalar!`;
 
