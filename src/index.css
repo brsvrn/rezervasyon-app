@@ -7,10 +7,12 @@
 .font-playfair { font-family: 'Playfair Display', serif; }
 .font-hanken { font-family: 'Hanken Grotesk', sans-serif; }
 
-/* Hide scrollbar for clean android look */
+@layer components {
+  .field-input {
+    @apply h-12 w-full rounded-md border border-[#dcc0bd] bg-white px-3 text-[15px] text-[#1c1c16] outline-none transition focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]/20;
+  }
+}
+
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background-color: #D4AF37; border-radius: 10px; }
-
-
-
