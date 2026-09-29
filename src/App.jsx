@@ -30,6 +30,13 @@ const TABLES = [
   ...Array.from({ length: 16 }, (_, i) => ({ id: `T${i + 1}`, no: `T${i + 1}`, area: 'teras' })),
 ];
 
+const RESERVATION_NOTE_OPTIONS = [
+  { id: 'decoration', label: 'Süsleme', emoji: '🎈' },
+  { id: 'proposal', label: 'Evlilik Teklifi', emoji: '💍' },
+  { id: 'birthday', label: 'Doğum Günü', emoji: '🎂' },
+  { id: 'dessert_candle', label: 'Tatlıya Mum', emoji: '🕯️' },
+];
+
 const STORAGE_KEY = 'maitre_reservations_v4';
 const LEGACY_STORAGE_KEY = 'maitre_reservations_v3';
 
@@ -58,6 +65,7 @@ function emptyForm(date) {
     pax: 2,
     area: 'salon',
     tableNo: 'V1',
+    specialNotes: [],
     notes: '',
   };
 }
@@ -70,6 +78,9 @@ function normalizeReservation(item) {
     tableNo,
     area: item.area || inferArea(tableNo),
     pax: Number(item.pax) || 1,
+    specialNotes: Array.isArray(item.specialNotes)
+      ? item.specialNotes.filter((id) => RESERVATION_NOTE_OPTIONS.some((option) => option.id === id))
+      : [],
     notes: item.notes || '',
     status: item.status || 'pending',
   };
@@ -119,11 +130,19 @@ export default function App() {
     [activeDayReservations],
   );
 
+  const specialNoteCounts = Object.fromEntries(
+    RESERVATION_NOTE_OPTIONS.map((option) => [
+      option.id,
+      activeDayReservations.filter((reservation) => reservation.specialNotes?.includes(option.id)).length,
+    ]),
+  );
+
   const dashboard = {
     totalTables: TOTAL_TABLES,
     occupiedTables: occupiedTableSet.size,
     emptyTables: TOTAL_TABLES - occupiedTableSet.size,
     totalPax: activeDayReservations.reduce((sum, r) => sum + Number(r.pax || 0), 0),
+    specialNoteCounts,
   };
 
   const displayReservations = useMemo(() => {
@@ -284,6 +303,7 @@ export default function App() {
       pax: Number(reservation.pax) || 1,
       area: reservation.area || inferArea(reservation.tableNo),
       tableNo: reservation.tableNo,
+      specialNotes: Array.isArray(reservation.specialNotes) ? reservation.specialNotes : [],
       notes: reservation.notes || '',
     });
     setFormError('');
@@ -323,7 +343,20 @@ export default function App() {
     const pending = dayReservations.filter((r) => r.status === 'pending');
     const arrivedPax = arrived.reduce((sum, r) => sum + Number(r.pax || 0), 0);
     const pendingPax = pending.reduce((sum, r) => sum + Number(r.pax || 0), 0);
-    const report = `📊 *${prettyDate(selectedDate)} - REZERVASYON RAPORU*\n\n✅ Geldi: ${arrived.length} masa / ${arrivedPax} kişi\n⏳ Beklenen: ${pending.length} rezervasyon / ${pendingPax} kişi\n❌ İptal: ${cancelled.length} rezervasyon\n🪑 Kullanılan/Rezerve masa: ${dashboard.occupiedTables}/${TOTAL_TABLES}`;
+
+    const reservationDetailLines = dayReservations
+      .filter((reservation) => reservation.status !== 'cancelled')
+      .map((reservation) => {
+        const selectedNotes = RESERVATION_NOTE_OPTIONS
+          .filter((option) => reservation.specialNotes?.includes(option.id))
+          .map((option) => `${option.emoji} ${option.label}`);
+        if (reservation.notes?.trim()) selectedNotes.push(`Not: ${reservation.notes.trim()}`);
+        const noteText = selectedNotes.length ? ` · ${selectedNotes.join(' · ')}` : '';
+        return `• ${reservation.tableNo} · ${reservation.time} · ${reservation.name} · ${reservation.pax} kişi${noteText}`;
+      })
+      .join('\n');
+
+    const report = `📊 *${prettyDate(selectedDate)} - REZERVASYON RAPORU*\n\n✅ Geldi: ${arrived.length} masa / ${arrivedPax} kişi\n⏳ Beklenen: ${pending.length} rezervasyon / ${pendingPax} kişi\n❌ İptal: ${cancelled.length} rezervasyon\n🪑 Kullanılan/Rezerve masa: ${dashboard.occupiedTables}/${TOTAL_TABLES}${reservationDetailLines ? `\n\n📝 *MASA / NOT DETAYI*\n${reservationDetailLines}` : ''}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(report)}`, '_blank');
   };
 
@@ -340,6 +373,12 @@ export default function App() {
     { label: 'Dolu / Rezerve', value: dashboard.occupiedTables, icon: <Utensils size={20} /> },
     { label: 'Toplam Kişi', value: dashboard.totalPax, icon: <Users size={20} /> },
   ];
+
+  const specialDashboardCards = RESERVATION_NOTE_OPTIONS.map((option) => ({
+    label: option.label,
+    value: dashboard.specialNoteCounts[option.id] || 0,
+    icon: <span className="text-lg leading-none">{option.emoji}</span>,
+  }));
 
   const renderTableCard = (table) => {
     const style = table.status === 'empty'
@@ -418,6 +457,18 @@ export default function App() {
             </div>
           ))}
         </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+          {specialDashboardCards.map((card) => (
+            <div key={card.label} className="rounded-xl border border-[#4A0404]/10 bg-[#FDFAF0] p-3 shadow-sm">
+              <div className="mb-2 flex items-center justify-between gap-2 text-[#89726f]">
+                <span className="text-[10px] font-bold uppercase tracking-[0.1em]">{card.label}</span>
+                {card.icon}
+              </div>
+              <strong className="font-playfair text-2xl font-semibold text-[#4A0404]">{card.value}</strong>
+            </div>
+          ))}
+        </div>
       </section>
 
       <main className="mx-auto flex w-full max-w-[1480px] flex-col items-start gap-6 p-4 md:flex-row-reverse md:p-8 md:pt-6">
@@ -484,8 +535,34 @@ export default function App() {
               </div>
             </div>
 
-            <Field label="Özel Not">
-              <textarea value={formData.notes} onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))} className="field-input min-h-[88px] resize-none py-3" placeholder="Alerji, kutlama, masa tercihi, özel istek..." />
+            <div>
+              <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-[#554240]">Rezervasyon Notları</label>
+              <div className="grid grid-cols-2 gap-2">
+                {RESERVATION_NOTE_OPTIONS.map((option) => {
+                  const selected = formData.specialNotes.includes(option.id);
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setFormData((previous) => ({
+                        ...previous,
+                        specialNotes: selected
+                          ? previous.specialNotes.filter((id) => id !== option.id)
+                          : [...previous.specialNotes, option.id],
+                      }))}
+                      className={`flex min-h-[44px] items-center gap-2 rounded-md border px-3 text-left text-xs font-bold transition ${selected ? 'border-[#4A0404] bg-[#4A0404] text-white' : 'border-[#dcc0bd] bg-white text-[#554240] hover:border-[#D4AF37]'}`}
+                      aria-pressed={selected}
+                    >
+                      <span className="text-base leading-none">{option.emoji}</span>
+                      <span>{option.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <Field label="Manuel Not">
+              <textarea value={formData.notes} onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))} className="field-input min-h-[88px] resize-none py-3" placeholder="Alerji, masa tercihi veya diğer özel istekleri yaz..." />
             </Field>
 
             {formError && (
@@ -546,7 +623,18 @@ export default function App() {
                           <span className="flex items-center gap-2"><Users size={14} /> {reservation.pax} kişi</span>
                         </div>
 
-                        {reservation.notes && <div className="mt-3 flex items-start gap-2 rounded-lg bg-[#FDFAF0] p-2.5 text-[12px] text-[#554240]"><Info size={15} className="mt-0.5 shrink-0 text-[#D4AF37]" /><span>{reservation.notes}</span></div>}
+                        {reservation.specialNotes?.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-1.5">
+                            {RESERVATION_NOTE_OPTIONS
+                              .filter((option) => reservation.specialNotes.includes(option.id))
+                              .map((option) => (
+                                <span key={option.id} className="rounded-full border border-[#D4AF37]/35 bg-[#FDFAF0] px-2.5 py-1 text-[11px] font-bold text-[#4A0404]">
+                                  {option.emoji} {option.label}
+                                </span>
+                              ))}
+                          </div>
+                        )}
+                        {reservation.notes && <div className="mt-2 flex items-start gap-2 rounded-lg bg-[#FDFAF0] p-2.5 text-[12px] text-[#554240]"><Info size={15} className="mt-0.5 shrink-0 text-[#D4AF37]" /><span><b>Not:</b> {reservation.notes}</span></div>}
                       </div>
 
                       <div className="flex shrink-0 gap-1">
