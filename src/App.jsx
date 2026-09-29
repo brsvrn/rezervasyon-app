@@ -96,6 +96,8 @@ export default function App() {
   const [formData, setFormData] = useState(() => emptyForm(today));
   const [formError, setFormError] = useState('');
   const [crmInfo, setCrmInfo] = useState(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [showReportNotes, setShowReportNotes] = useState(false);
   const [reservations, setReservations] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!saved) return [];
@@ -337,27 +339,51 @@ export default function App() {
     window.open(`https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
-  const handleShiftReport = () => {
+  const reportStats = useMemo(() => {
     const arrived = dayReservations.filter((r) => r.status === 'arrived');
     const cancelled = dayReservations.filter((r) => r.status === 'cancelled');
     const pending = dayReservations.filter((r) => r.status === 'pending');
-    const arrivedPax = arrived.reduce((sum, r) => sum + Number(r.pax || 0), 0);
-    const pendingPax = pending.reduce((sum, r) => sum + Number(r.pax || 0), 0);
 
-    const reservationDetailLines = dayReservations
+    return {
+      arrived,
+      cancelled,
+      pending,
+      arrivedPax: arrived.reduce((sum, r) => sum + Number(r.pax || 0), 0),
+      pendingPax: pending.reduce((sum, r) => sum + Number(r.pax || 0), 0),
+    };
+  }, [dayReservations]);
+
+  const reservationsWithNotes = useMemo(
+    () => dayReservations
       .filter((reservation) => reservation.status !== 'cancelled')
       .map((reservation) => {
-        const selectedNotes = RESERVATION_NOTE_OPTIONS
+        const notes = RESERVATION_NOTE_OPTIONS
           .filter((option) => reservation.specialNotes?.includes(option.id))
           .map((option) => `${option.emoji} ${option.label}`);
-        if (reservation.notes?.trim()) selectedNotes.push(`Not: ${reservation.notes.trim()}`);
-        const noteText = selectedNotes.length ? ` · ${selectedNotes.join(' · ')}` : '';
-        return `• ${reservation.tableNo} · ${reservation.time} · ${reservation.name} · ${reservation.pax} kişi${noteText}`;
+
+        if (reservation.notes?.trim()) notes.push(reservation.notes.trim());
+
+        return { ...reservation, reportNotes: notes };
       })
+      .filter((reservation) => reservation.reportNotes.length > 0),
+    [dayReservations],
+  );
+
+  const buildShiftReport = () => {
+    const reservationDetailLines = reservationsWithNotes
+      .map((reservation) => `• ${reservation.tableNo} · ${reservation.reportNotes.join(' · ')}`)
       .join('\n');
 
-    const report = `📊 *${prettyDate(selectedDate)} - REZERVASYON RAPORU*\n\n✅ Geldi: ${arrived.length} masa / ${arrivedPax} kişi\n⏳ Beklenen: ${pending.length} rezervasyon / ${pendingPax} kişi\n❌ İptal: ${cancelled.length} rezervasyon\n🪑 Kullanılan/Rezerve masa: ${dashboard.occupiedTables}/${TOTAL_TABLES}${reservationDetailLines ? `\n\n📝 *MASA / NOT DETAYI*\n${reservationDetailLines}` : ''}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(report)}`, '_blank');
+    return `📊 *${prettyDate(selectedDate)} - REZERVASYON RAPORU*\n\n✅ Geldi: ${reportStats.arrived.length} masa / ${reportStats.arrivedPax} kişi\n⏳ Beklenen: ${reportStats.pending.length} rezervasyon / ${reportStats.pendingPax} kişi\n❌ İptal: ${reportStats.cancelled.length} rezervasyon\n🪑 Kullanılan/Rezerve masa: ${dashboard.occupiedTables}/${TOTAL_TABLES}${reservationDetailLines ? `\n\n📝 *MASA / NOT DETAYI*\n${reservationDetailLines}` : ''}`;
+  };
+
+  const handleShiftReport = () => {
+    setShowReportNotes(false);
+    setReportOpen(true);
+  };
+
+  const handleShareShiftReport = () => {
+    window.open(`https://wa.me/?text=${encodeURIComponent(buildShiftReport())}`, '_blank');
   };
 
   const startReservationForTable = (table) => {
@@ -674,6 +700,87 @@ export default function App() {
           )}
         </section>
       </main>
+
+      {reportOpen && (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4" onClick={() => setReportOpen(false)}>
+          <div className="max-h-[88vh] w-full overflow-y-auto rounded-t-2xl border border-[#D4AF37]/30 bg-[#fcf9ef] p-5 shadow-2xl sm:max-w-xl sm:rounded-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="mb-5 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#89726f]">Gün Raporu</p>
+                <h2 className="font-playfair text-2xl font-semibold text-[#4A0404]">{prettyDate(selectedDate)}</h2>
+              </div>
+              <button type="button" onClick={() => setReportOpen(false)} className="rounded-full p-2 text-[#89726f] hover:bg-white hover:text-[#4A0404]" aria-label="Raporu kapat">
+                <XCircle size={22} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-[#D4AF37]/25 bg-white p-3">
+                <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-[#89726f]">Geldi</span>
+                <strong className="mt-1 block font-playfair text-2xl text-[#4A0404]">{reportStats.arrived.length}</strong>
+                <span className="text-xs text-[#554240]">{reportStats.arrivedPax} kişi</span>
+              </div>
+              <div className="rounded-xl border border-[#D4AF37]/25 bg-white p-3">
+                <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-[#89726f]">Beklenen</span>
+                <strong className="mt-1 block font-playfair text-2xl text-[#4A0404]">{reportStats.pending.length}</strong>
+                <span className="text-xs text-[#554240]">{reportStats.pendingPax} kişi</span>
+              </div>
+              <div className="rounded-xl border border-[#D4AF37]/25 bg-white p-3">
+                <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-[#89726f]">İptal</span>
+                <strong className="mt-1 block font-playfair text-2xl text-[#4A0404]">{reportStats.cancelled.length}</strong>
+                <span className="text-xs text-[#554240]">rezervasyon</span>
+              </div>
+              <div className="rounded-xl border border-[#D4AF37]/25 bg-white p-3">
+                <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-[#89726f]">Dolu / Rezerve</span>
+                <strong className="mt-1 block font-playfair text-2xl text-[#4A0404]">{dashboard.occupiedTables}/{TOTAL_TABLES}</strong>
+                <span className="text-xs text-[#554240]">masa</span>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={handleShareShiftReport}
+                className="flex min-h-[48px] items-center justify-center gap-2 rounded-lg bg-[#25D366] px-4 text-sm font-bold text-white shadow-sm"
+              >
+                <MessageCircle size={18} /> WhatsApp'ta Paylaş
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowReportNotes((value) => !value)}
+                className="flex min-h-[48px] items-center justify-center gap-2 rounded-lg border border-[#4A0404] bg-white px-4 text-sm font-bold text-[#4A0404]"
+              >
+                <FileText size={18} /> {showReportNotes ? 'Notları Gizle' : 'Masa + Notları Göster'}
+              </button>
+            </div>
+
+            {showReportNotes && (
+              <div className="mt-4 rounded-xl border border-[#D4AF37]/25 bg-white p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h3 className="font-playfair text-lg font-semibold text-[#4A0404]">Masa Notları</h3>
+                  <span className="rounded-full bg-[#FDFAF0] px-2.5 py-1 text-[11px] font-bold text-[#89726f]">{reservationsWithNotes.length} masa</span>
+                </div>
+
+                {reservationsWithNotes.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-[#89726f]">Bu tarih için not eklenmiş masa yok.</p>
+                ) : (
+                  <div className="divide-y divide-[#f1eee4]">
+                    {reservationsWithNotes.map((reservation) => (
+                      <div key={reservation.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+                        <span className="shrink-0 rounded-md bg-[#4A0404] px-2.5 py-1 text-xs font-bold text-[#D4AF37]">{reservation.tableNo}</span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-[#89726f]">{reservation.time} · {reservation.name}</p>
+                          <p className="mt-1 text-sm font-semibold leading-relaxed text-[#4A0404]">{reservation.reportNotes.join(' · ')}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <nav className="fixed bottom-0 z-50 flex h-[72px] w-full items-center justify-around border-t border-[#D4AF37]/30 bg-[#FDFAF0] shadow-[0_-4px_24px_rgba(74,4,4,0.06)] md:hidden">
         <MobileNavButton active={activeTab === 'feed'} onClick={() => setActiveTab('feed')} icon={<ListOrdered size={23} />} label="LİSTE" />
